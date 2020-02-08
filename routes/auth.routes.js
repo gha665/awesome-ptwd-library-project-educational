@@ -1,6 +1,8 @@
 const { Router } = require("express");
 const router = new Router();
 
+const mongoose = require('mongoose'); //<---require mongoose vor validation
+
 // encrypt the password and save the hashed password in the DB
 const bcryptjs = require("bcryptjs");
 const saltRounds = 10;
@@ -20,6 +22,11 @@ router.post("/signup", (req, res, next) => {
   // console.log("The form data ", req.body);
   
   const { username, email, password } = req.body;
+
+  if (!username || !email || !password) {   //<---make sure all fields are filled
+    res.render('auth/signup', { errorMessage: 'All fields are mandatory. Please provide your username, email and password'});
+    return;
+  }
   
   bcryptjs                                  //<---encrypt the password
   .genSalt(saltRounds)
@@ -36,10 +43,14 @@ router.post("/signup", (req, res, next) => {
     console.log("Newly created user is: ", userFromDB);
     res.redirect('/userProfile');
   })
-  .catch(error => next(error));
+  .catch(error => {
+    if (error instanceof mongoose.Error.ValidationError) {
+      res.status(500).render('auth/signup', { errorMessage: error.message });
+    } else {
+      next(error);
+    }
+  })  
 });
-
-
 
 
 module.exports = router;
