@@ -3,15 +3,19 @@ const router = new Router();
 
 const mongoose = require('mongoose'); //<---require mongoose vor validation
 
-// encrypt the password and save the hashed password in the DB
+// require bcrypt to encrypt the password and save the hashed password in the DB
 const bcryptjs = require("bcryptjs");
-const saltRounds = 10;
+const saltRounds = 10; //<---encryption strngth (number of salt rounds affects the time to hash)
 
 //require user model
 const User = require("../models/User.model");
 
-// -------------ROUTES-----------
-// .get() route ==> to display the signup form to users
+
+
+// =====================================ROUTES===========================
+
+// -------------------SIGNUP------------------
+// .get() route ==> to display the SIGNUP form to users
 router.get("/signup", (req, res) => res.render("auth/signup"));
 
 //get the newly created user page
@@ -65,5 +69,51 @@ router.post("/signup", (req, res, next) => {
   }); 
 });
 
+
+
+
+
+// -------------------login------------------
+// .get() route ==> to display the LOGIN form to users
+router.get("/login", (req, res) => res.render("auth/login"));
+
+// .post() route ==> to process form data
+router.post('/login', (req, res, next) => {
+
+  const { email, password } = req.body;
+  console.log("The form data ", req.body);
+
+  if (!email || !password) {   //<---make sure all fields are filled
+    res.render('auth/login', { errorMessage: 'All fields are mandatory. Please provide both, email and password'});
+    return;
+  }
+
+  //email
+  User.findOne( {email} )
+    .then(user => {
+      if (!user) {
+        res.render('auth/login', { errorMessage: 'Error logging in. Email is not registered. Try with other email.' });
+        return;
+      } else if (bcryptjs.compareSync(password, user.passwordHash)) {
+        // res.render('users/user-profile', { user });
+        req.session.currentUser = user;
+        res.redirect('userProfile');
+      } else {
+        res.render('auth/login', { errorMessage: 'Incorrect password' });
+      }
+    })
+    .catch(err => next(err));
+});
+
+
+// -------------------logout------------------
+router.post('/logout', routeGard, (req, res) => {
+  req.session.destroy();
+  res.redirect('/');
+});
+
+router.get('/userProfile', routeGard, (req, res) => {
+  res.render('/user-profile');
+});
 
 module.exports = router;
